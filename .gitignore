@@ -1,0 +1,10 @@
+# Rust targets
+/implementation/target/
+**/target/
+Cargo.lock
+
+# macOS
+.DS_Store
+
+# Temporary files
+/implementation/Cargo.toml.orig

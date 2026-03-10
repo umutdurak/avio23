@@ -1,0 +1,31 @@
+major_frame: 20ms
+partitions:
+  - id: 0
+    name: fuel_tank_simulation
+    duration: 10ms
+    offset: 0ms
+    period: 20ms
+    image: fuel_tank_simulation
+  - id: 1
+    name: fuel_tank_controller
+    offset: 10ms
+    duration: 10ms
+    image: fuel_tank_controller
+    period: 20ms
+channel:
+  - !Sampling
+    msg_size: 10KB
+    source:
+      partition: fuel_tank_simulation
+      port: fuel_sensors
+    destination:
+      - partition: fuel_tank_controller
+        port: fuel_sensors
+  - !Sampling
+    msg_size: 10KB
+    source:
+      partition: fuel_tank_controller
+      port: fuel_actuators
+    destination:
+      - partition: fuel_tank_simulation
+        port: fuel_actuators

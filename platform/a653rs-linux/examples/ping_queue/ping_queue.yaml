@@ -1,0 +1,33 @@
+major_frame: 1s
+partitions:
+  - id: 0
+    name: ping_queue_client
+    duration: 30ms
+    offset: 0ms
+    period: 1s
+    image: ping_queue_client
+  - id: 1
+    name: ping_queue_server
+    duration: 30ms
+    offset: 450ms
+    period: 1s
+    image: ping_queue_server
+channel:
+  - !Queuing
+    msg_size: 16B
+    msg_num: 10
+    source:
+      partition: ping_queue_client
+      port: req_source
+    destination:
+      partition: ping_queue_server
+      port: req_dest
+  - !Queuing
+    msg_size: 32B
+    msg_num: 10
+    source:
+      partition: ping_queue_server
+      port: res_source
+    destination:
+      partition: ping_queue_client
+      port: res_dest

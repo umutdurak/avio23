@@ -1,0 +1,16 @@
+[package]
+name = "hello_part"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+#forced-target = "x86_64-unknown-linux-musl"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+a653rs = { workspace = true, features = ["macros"] }
+a653rs-postcard = { version = "0.4", features = ["alloc"] }
+a653rs-linux.workspace = true
+serde = "1.0"
+log = "0"
+humantime = "2.1"

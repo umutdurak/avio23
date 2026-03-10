@@ -1,0 +1,33 @@
+[package]
+name = "a653rs-linux"
+version = "0.2.2"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+repository.workspace = true
+description = "a653rs partition library for a653rs-linux hypervisor"
+
+
+[features]
+# Enables support for TCP and UDP sockets in partitions
+socket = []
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+a653rs.workspace = true
+a653rs-linux-core.workspace = true
+nix.workspace = true
+memmap2.workspace = true
+procfs.workspace = true
+polling.workspace = true
+once_cell.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+
+lazy_static = "1.4"
+log.workspace = true
+tinyvec = "1.6"
+oneshot = "0.1.6"

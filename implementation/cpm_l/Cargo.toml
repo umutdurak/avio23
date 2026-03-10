@@ -1,0 +1,13 @@
+[package]
+name = "cpiom_l"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+a653rs = "0.6"
+a653rs-linux = { path = "../../platform/a653rs-linux/partition" }
+a653rs-postcard = { version = "0.4", features = ["alloc"] }
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+

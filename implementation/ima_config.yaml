@@ -1,0 +1,39 @@
+# Avio23 IMA Hypervisor Configuration (a653rs-linux)
+# This file will map the ARINC 653 schedule and channels 
+# between the generic IOM gateway and the CPIOM domains.
+
+major_frame: 40ms
+partitions:
+  - id: 0
+    name: sim_gateway
+    duration: 10ms
+    offset: 0ms
+    period: 40ms
+    image: sim_gateway
+  - id: 1
+    name: cpiom_l
+    offset: 10ms
+    duration: 5ms
+    image: cpiom_l
+    period: 40ms
+  - id: 2
+    name: cpiom_f
+    offset: 15ms
+    duration: 5ms
+    image: cpiom_f
+    period: 40ms
+  - id: 3
+    name: cpiom_a
+    offset: 20ms
+    duration: 5ms
+    image: cpiom_a
+    period: 40ms
+  - id: 4
+    name: cpiom_e
+    offset: 25ms
+    duration: 5ms
+    image: cpiom_e
+    period: 40ms
+
+channel:
+  # To be populated with Sampling/Queuing connections

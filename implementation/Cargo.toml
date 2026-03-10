@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "sim_gateway",
+    "cpm_l",
+    "cpm_f",
+    "cpm_a",
+    "cpm_e",
+]
+
+

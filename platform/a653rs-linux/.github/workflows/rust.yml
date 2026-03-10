@@ -1,0 +1,96 @@
+name: Example execution
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  run-example:
+    name: Run hypervisor with example ${{ matrix.example }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - hello_part
+          - fuel_tank
+          - ping
+          - dev_random
+          - ping_queue
+          - redirect_stdio
+    env:
+      DURATION: 10s
+      RUST_LOG: trace
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: cachix/cachix-action@v15
+        with:
+          name: dlr-ft
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ github.job }}-${{ matrix.example }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Check CGroup
+        run: systemd-run --user --scope cat /proc/self/cgroup
+      - name: Run example ${{ matrix.example }}
+        shell: nix develop --command bash -e {0}
+        run: systemd-run-example-${{ matrix.example }} --duration "$DURATION" 2>&1 | tee ./output.log
+      - name: Verify output
+        run: |
+          assert_contain() {
+            local contain="$1"
+            local msg="$2"
+            if ! grep "$contain" ./output.log; then
+              printf "$msg\n"
+              return 1
+            fi
+            return 0
+          }
+
+          assert_not_contain() {
+            local contain="$1"
+            if grep "$contain" ./output.log; then
+              return 1
+            fi
+            return 0
+          }
+          
+          assert_not_contain "ERROR"
+          assert_not_contain "panic"
+
+          if [ "${{ matrix.example }}" = "hello_part" ]; then
+            assert_not_contain "WARN"
+            assert_contain "Received via Sampling Port: CustomMessage" \
+              "no custom message received"
+          fi
+          if [ "${{ matrix.example }}" = "fuel_tank" ]; then
+            assert_not_contain "WARN"
+          fi
+          if [ "${{ matrix.example }}" = "ping" ]; then
+            assert_contain "received valid response" \
+              "no valid response received"
+          fi
+          if [ "${{ matrix.example }}" = "dev_random" ]; then
+            assert_not_contain "WARN"
+            assert_contain "got some randomness" \
+              "missing randomness log info"
+          fi
+          if [ "${{ matrix.example }}" = "ping_queue" ]; then
+            assert_contain "Received valid response" \
+              "no valid response received"
+          fi
+          if [ "${{ matrix.example }}" = "redirect_stdio" ]; then
+            assert_not_contain "WARN"
+            assert_contain "Terminating partition" \
+              "partition didn't terminate as expected"
+          fi

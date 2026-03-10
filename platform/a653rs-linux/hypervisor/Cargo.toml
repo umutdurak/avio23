@@ -1,0 +1,39 @@
+[package]
+name = "a653rs-linux-hypervisor"
+version = "0.2.2"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+a653rs.workspace = true
+a653rs.features = [ "bindings" ]
+
+a653rs-linux-core.workspace = true
+
+# Required
+nix.workspace = true
+memmap2.workspace = true
+procfs.workspace = true
+polling.workspace = true
+itertools.workspace = true
+once_cell.workspace = true
+bytesize.workspace = true
+anyhow.workspace = true
+
+tempfile = "3.3"
+serde = { version = "1.0", features = ["derive"] }
+libc = "0.2"
+clap = { version = "4", features = [ "derive" ] }
+serde_yaml = "0"
+humantime = "2.1"
+humantime-serde = "1"
+log = "0"
+pretty_env_logger = "0.5"
+quit = "2.0"
+memfd = "0.6"
+num = "0.4"
+thiserror = "1.0"
+which = "6.0"
