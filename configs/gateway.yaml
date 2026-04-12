@@ -1,0 +1,54 @@
+# Avio23 - Simulation Gateway (IOM) Hypervisor Configuration
+# This node bridges external flight simulation data to the IMA network.
+# In a real system, the IOM converts ARINC 429 / discrete I/O to AFDX.
+
+major_frame: 40ms
+
+partitions:
+  - id: 0
+    name: sim_gateway
+    duration: 10ms
+    offset: 0ms
+    period: 40ms
+    image: sim_gateway
+
+channel:
+  # IOM -> CPIOM-L: Landing Gear sensor data
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_lg
+    destination:
+      - partition: cpiom_l
+        port: iom_to_lg
+
+  # IOM -> CPIOM-F: Fuel sensor data
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_fuel
+    destination:
+      - partition: cpiom_f
+        port: iom_to_fuel
+
+  # IOM -> CPIOM-A: ECS sensor data
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_ecs
+    destination:
+      - partition: cpiom_a
+        port: iom_to_ecs
+
+  # IOM -> CPIOM-E: Electrical sensor data
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_elec
+    destination:
+      - partition: cpiom_e
+        port: iom_to_elec

@@ -1,0 +1,34 @@
+# Avio23 - Electrical / Energy Domain (CPIOM-E) Hypervisor Configuration
+# Hosts: Generator Control, Load Shedding applications
+# DAL B - Loss of electrical power is hazardous
+
+major_frame: 40ms
+
+partitions:
+  - id: 0
+    name: cpiom_e
+    duration: 5ms
+    offset: 0ms
+    period: 40ms
+    image: cpiom_e
+
+channel:
+  # IOM -> Electrical: generator and bus data
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_elec
+    destination:
+      - partition: cpiom_e
+        port: iom_to_elec
+
+  # Electrical -> IOM: generator status and load shedding commands
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: cpiom_e
+      port: elec_to_iom
+    destination:
+      - partition: sim_gateway
+        port: elec_to_iom

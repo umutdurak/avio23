@@ -2,7 +2,17 @@ version: '3.8'
 
 # Avio23 IMA Platform
 # Each container represents a physical Core Processing Module (CPM)
-# running its own a653rs-linux hypervisor.
+# running its own a653rs-linux hypervisor instance.
+#
+# Architecture:
+#   sim_gateway  (IOM)     -- generates synthetic flight data
+#   cpm_l_node   (CPIOM-L) -- Landing Gear domain
+#   cpm_f_node   (CPIOM-F) -- Fuel domain
+#   cpm_a_node   (CPIOM-A) -- Air Conditioning / ECS domain
+#   cpm_e_node   (CPIOM-E) -- Electrical / Energy domain
+#
+# All nodes communicate over the 'afdx' bridge network,
+# simulating an ARINC 664 (AFDX) backbone.
 
 services:
   # The common base image that builds the workspace
@@ -11,54 +21,62 @@ services:
       context: .
       dockerfile: Dockerfile
     image: avio23-builder:latest
-    # We don't run this service, we just build it to cache the Rust compilation
     command: echo "Builder finished"
 
-  # 1. Gateway IOM (UDP Bridge to Flight Sim)
+  # 1. Gateway IOM (Sensor data broadcaster)
   sim_gateway:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: ["cargo", "run", "--package", "a653rs-linux-hypervisor", "--release", "--", "configs/gateway.yaml"]
-    # Expose UDP port for X-Plane/MSFS connection
+    command: >
+      cargo run --package a653rs-linux-hypervisor --release --
+      /usr/src/avio23/configs/gateway.yaml
     ports:
       - "49000:49000/udp"
     networks:
       - afdx
 
-  # 2. Landing Gear Domain (CPM-L)
+  # 2. Landing Gear Domain (CPIOM-L)
   cpm_l_node:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: ["cargo", "run", "--package", "a653rs-linux-hypervisor", "--release", "--", "configs/cpm_l.yaml"]
+    command: >
+      cargo run --package a653rs-linux-hypervisor --release --
+      /usr/src/avio23/configs/cpm_l.yaml
     networks:
       - afdx
 
-  # 3. Fuel Domain (CPM-F)
+  # 3. Fuel Domain (CPIOM-F)
   cpm_f_node:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: ["cargo", "run", "--package", "a653rs-linux-hypervisor", "--release", "--", "configs/cpm_f.yaml"]
+    command: >
+      cargo run --package a653rs-linux-hypervisor --release --
+      /usr/src/avio23/configs/cpm_f.yaml
     networks:
       - afdx
 
-  # 4. Air Conditioning Domain (CPM-A)
+  # 4. Air Conditioning / ECS Domain (CPIOM-A)
   cpm_a_node:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: ["cargo", "run", "--package", "a653rs-linux-hypervisor", "--release", "--", "configs/cpm_a.yaml"]
+    command: >
+      cargo run --package a653rs-linux-hypervisor --release --
+      /usr/src/avio23/configs/cpm_a.yaml
     networks:
       - afdx
 
-  # 5. Energy Domain (CPM-E)
+  # 5. Electrical / Energy Domain (CPIOM-E)
   cpm_e_node:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: ["cargo", "run", "--package", "a653rs-linux-hypervisor", "--release", "--", "configs/cpm_e.yaml"]
+    command: >
+      cargo run --package a653rs-linux-hypervisor --release --
+      /usr/src/avio23/configs/cpm_e.yaml
     networks:
       - afdx
 

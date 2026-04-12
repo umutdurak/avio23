@@ -1,8 +1,20 @@
 # Avio23 IMA Hypervisor Configuration (a653rs-linux)
-# This file will map the ARINC 653 schedule and channels 
-# between the generic IOM gateway and the CPIOM domains.
+#
+# This is the SYSTEM-LEVEL configuration that describes the complete IMA
+# platform: all 5 partitions (1 IOM gateway + 4 CPIOMs) running on a single
+# hypervisor instance. In a real aircraft each CPIOM would have its own
+# config (see configs/*.yaml). This unified file is for single-host demos.
+#
+# Schedule (40ms major frame):
+#   0ms  - 10ms : sim_gateway  (IOM sensor broadcast)
+#  10ms  - 15ms : cpiom_l      (Landing Gear)
+#  15ms  - 20ms : cpiom_f      (Fuel)
+#  20ms  - 25ms : cpiom_a      (Air Conditioning / ECS)
+#  25ms  - 30ms : cpiom_e      (Electrical / Energy)
+#  30ms  - 40ms : idle
 
 major_frame: 40ms
+
 partitions:
   - id: 0
     name: sim_gateway
@@ -10,24 +22,28 @@ partitions:
     offset: 0ms
     period: 40ms
     image: sim_gateway
+
   - id: 1
     name: cpiom_l
     offset: 10ms
     duration: 5ms
     image: cpiom_l
     period: 40ms
+
   - id: 2
     name: cpiom_f
     offset: 15ms
     duration: 5ms
     image: cpiom_f
     period: 40ms
+
   - id: 3
     name: cpiom_a
     offset: 20ms
     duration: 5ms
     image: cpiom_a
     period: 40ms
+
   - id: 4
     name: cpiom_e
     offset: 25ms
@@ -35,5 +51,90 @@ partitions:
     image: cpiom_e
     period: 40ms
 
+# ============================================================
+# Sampling Channels (IOM <-> CPIOM communication)
+# ============================================================
+# Each channel connects a source partition:port to one or more
+# destination partition:port pairs. The !Sampling tag selects
+# last-write-wins semantics (ARINC 653 sampling port model).
+
 channel:
-  # To be populated with Sampling/Queuing connections
+  # --- IOM -> Landing Gear ---
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_lg
+    destination:
+      - partition: cpiom_l
+        port: iom_to_lg
+
+  # --- Landing Gear -> IOM ---
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: cpiom_l
+      port: lg_to_iom
+    destination:
+      - partition: sim_gateway
+        port: lg_to_iom
+
+  # --- IOM -> Fuel ---
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_fuel
+    destination:
+      - partition: cpiom_f
+        port: iom_to_fuel
+
+  # --- Fuel -> IOM ---
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: cpiom_f
+      port: fuel_to_iom
+    destination:
+      - partition: sim_gateway
+        port: fuel_to_iom
+
+  # --- IOM -> ECS ---
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_ecs
+    destination:
+      - partition: cpiom_a
+        port: iom_to_ecs
+
+  # --- ECS -> IOM ---
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: cpiom_a
+      port: ecs_to_iom
+    destination:
+      - partition: sim_gateway
+        port: ecs_to_iom
+
+  # --- IOM -> Electrical ---
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: sim_gateway
+      port: iom_to_elec
+    destination:
+      - partition: cpiom_e
+        port: iom_to_elec
+
+  # --- Electrical -> IOM ---
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: cpiom_e
+      port: elec_to_iom
+    destination:
+      - partition: sim_gateway
+        port: elec_to_iom
