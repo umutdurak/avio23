@@ -1,11 +1,12 @@
 [package]
-name = "cpiom_f"
+name = "cpm_f"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-a653rs = "0.6"
-a653rs-linux = { path = "../../platform/a653rs-linux/partition" }
+a653rs = { version = "0.6", features = ["macros"] }
+a653rs-linux = { path = "../../platform/a653rs-linux/partition", features = ["socket"] }
 a653rs-postcard = { version = "0.4", features = ["alloc"] }
+postcard = "1.0"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }

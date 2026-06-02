@@ -28,59 +28,72 @@ services:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: >
-      cargo run --package a653rs-linux-hypervisor --release --
-      /usr/src/avio23/configs/gateway.yaml
+    command: a653rs-linux-hypervisor /usr/src/avio23/configs/gateway.yaml
+    privileged: true
+    environment:
+      RUST_LOG: info
     ports:
       - "49000:49000/udp"
     networks:
-      - afdx
+      afdx:
+        ipv4_address: 172.20.0.2
 
   # 2. Landing Gear Domain (CPIOM-L)
   cpm_l_node:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: >
-      cargo run --package a653rs-linux-hypervisor --release --
-      /usr/src/avio23/configs/cpm_l.yaml
+    command: a653rs-linux-hypervisor /usr/src/avio23/configs/cpm_l.yaml
+    privileged: true
+    environment:
+      RUST_LOG: info
     networks:
-      - afdx
+      afdx:
+        ipv4_address: 172.20.0.3
 
   # 3. Fuel Domain (CPIOM-F)
   cpm_f_node:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: >
-      cargo run --package a653rs-linux-hypervisor --release --
-      /usr/src/avio23/configs/cpm_f.yaml
+    command: a653rs-linux-hypervisor /usr/src/avio23/configs/cpm_f.yaml
+    privileged: true
+    environment:
+      RUST_LOG: info
     networks:
-      - afdx
+      afdx:
+        ipv4_address: 172.20.0.4
 
   # 4. Air Conditioning / ECS Domain (CPIOM-A)
   cpm_a_node:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: >
-      cargo run --package a653rs-linux-hypervisor --release --
-      /usr/src/avio23/configs/cpm_a.yaml
+    command: a653rs-linux-hypervisor /usr/src/avio23/configs/cpm_a.yaml
+    privileged: true
+    environment:
+      RUST_LOG: info
     networks:
-      - afdx
+      afdx:
+        ipv4_address: 172.20.0.5
 
   # 5. Electrical / Energy Domain (CPIOM-E)
   cpm_e_node:
     image: avio23-builder:latest
     depends_on:
       - builder
-    command: >
-      cargo run --package a653rs-linux-hypervisor --release --
-      /usr/src/avio23/configs/cpm_e.yaml
+    command: a653rs-linux-hypervisor /usr/src/avio23/configs/cpm_e.yaml
+    privileged: true
+    environment:
+      RUST_LOG: info
     networks:
-      - afdx
+      afdx:
+        ipv4_address: 172.20.0.6
 
 # The simulated AFDX network interconnecting the nodes
 networks:
   afdx:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

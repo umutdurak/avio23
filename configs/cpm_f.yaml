@@ -1,34 +1,61 @@
-# Avio23 - Fuel Domain (CPIOM-F) Hypervisor Configuration
-# Hosts: Fuel Quantity Computation, Transfer Pump Control applications
-# DAL C - Incorrect fuel indication is a major failure condition
+# Avio23 - Fuel Domain (CPM-F) Hypervisor Configuration
+# Hosts: local Network I/O Gateway and two Fuel applications
 
 major_frame: 40ms
 
 partitions:
   - id: 0
-    name: cpiom_f
-    duration: 5ms
+    name: cpm_f_gateway
+    duration: 3ms
     offset: 0ms
     period: 40ms
-    image: cpiom_f
+    image: cpm_f_gateway
+    sockets:
+      - type: udp
+        address: 0.0.0.0:49002
+
+  - id: 1
+    name: fuel_quantity
+    duration: 2ms
+    offset: 4ms
+    period: 40ms
+    image: fuel_quantity
+
+  - id: 2
+    name: transfer_pump
+    duration: 2ms
+    offset: 8ms
+    period: 40ms
+    image: transfer_pump
 
 channel:
-  # IOM -> Fuel: tank sensor data
+  # Gateway -> Applications: sensor data
   - !Sampling
     msg_size: 1KB
     source:
-      partition: sim_gateway
+      partition: cpm_f_gateway
       port: iom_to_fuel
     destination:
-      - partition: cpiom_f
+      - partition: fuel_quantity
+        port: iom_to_fuel
+      - partition: transfer_pump
         port: iom_to_fuel
 
-  # Fuel -> IOM: computed fuel state and commands
+  # Applications -> Gateway: status commands
   - !Sampling
     msg_size: 1KB
     source:
-      partition: cpiom_f
-      port: fuel_to_iom
+      partition: fuel_quantity
+      port: fuel_qty_to_iom
     destination:
-      - partition: sim_gateway
-        port: fuel_to_iom
+      - partition: cpm_f_gateway
+        port: fuel_qty_to_iom
+
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: transfer_pump
+      port: pump_to_iom
+    destination:
+      - partition: cpm_f_gateway
+        port: pump_to_iom

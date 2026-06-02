@@ -8,3 +8,8 @@ Cargo.lock
 
 # Temporary files
 /implementation/Cargo.toml.orig
+
+# IDE & AI Configs
+.claude/
+.gemini/
+

@@ -1,34 +1,61 @@
-# Avio23 - Electrical / Energy Domain (CPIOM-E) Hypervisor Configuration
-# Hosts: Generator Control, Load Shedding applications
-# DAL B - Loss of electrical power is hazardous
+# Avio23 - Electrical Domain (CPM-E) Hypervisor Configuration
+# Hosts: local Network I/O Gateway and two Electrical applications
 
 major_frame: 40ms
 
 partitions:
   - id: 0
-    name: cpiom_e
-    duration: 5ms
+    name: cpm_e_gateway
+    duration: 3ms
     offset: 0ms
     period: 40ms
-    image: cpiom_e
+    image: cpm_e_gateway
+    sockets:
+      - type: udp
+        address: 0.0.0.0:49004
+
+  - id: 1
+    name: generator_control
+    duration: 2ms
+    offset: 4ms
+    period: 40ms
+    image: generator_control
+
+  - id: 2
+    name: load_shedding
+    duration: 2ms
+    offset: 8ms
+    period: 40ms
+    image: load_shedding
 
 channel:
-  # IOM -> Electrical: generator and bus data
+  # Gateway -> Applications: sensor data
   - !Sampling
     msg_size: 1KB
     source:
-      partition: sim_gateway
+      partition: cpm_e_gateway
       port: iom_to_elec
     destination:
-      - partition: cpiom_e
+      - partition: generator_control
+        port: iom_to_elec
+      - partition: load_shedding
         port: iom_to_elec
 
-  # Electrical -> IOM: generator status and load shedding commands
+  # Applications -> Gateway: status commands
   - !Sampling
     msg_size: 1KB
     source:
-      partition: cpiom_e
-      port: elec_to_iom
+      partition: generator_control
+      port: gen_to_iom
     destination:
-      - partition: sim_gateway
-        port: elec_to_iom
+      - partition: cpm_e_gateway
+        port: gen_to_iom
+
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: load_shedding
+      port: shed_to_iom
+    destination:
+      - partition: cpm_e_gateway
+        port: shed_to_iom

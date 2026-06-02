@@ -1,34 +1,61 @@
-# Avio23 - Air Conditioning / ECS Domain (CPIOM-A) Hypervisor Configuration
-# Hosts: Bleed Air Control, Temperature Regulation applications
-# DAL D - Loss of cabin comfort is a minor failure condition
+# Avio23 - Environmental Control System (CPM-A) Hypervisor Configuration
+# Hosts: local Network I/O Gateway and two ECS applications
 
 major_frame: 40ms
 
 partitions:
   - id: 0
-    name: cpiom_a
-    duration: 5ms
+    name: cpm_a_gateway
+    duration: 3ms
     offset: 0ms
     period: 40ms
-    image: cpiom_a
+    image: cpm_a_gateway
+    sockets:
+      - type: udp
+        address: 0.0.0.0:49003
+
+  - id: 1
+    name: bleed_air
+    duration: 2ms
+    offset: 4ms
+    period: 40ms
+    image: bleed_air
+
+  - id: 2
+    name: temperature_reg
+    duration: 2ms
+    offset: 8ms
+    period: 40ms
+    image: temperature_reg
 
 channel:
-  # IOM -> ECS: cabin temperature and bleed data
+  # Gateway -> Applications: sensor data
   - !Sampling
     msg_size: 1KB
     source:
-      partition: sim_gateway
+      partition: cpm_a_gateway
       port: iom_to_ecs
     destination:
-      - partition: cpiom_a
+      - partition: bleed_air
+        port: iom_to_ecs
+      - partition: temperature_reg
         port: iom_to_ecs
 
-  # ECS -> IOM: pack/bleed commands
+  # Applications -> Gateway: status commands
   - !Sampling
     msg_size: 1KB
     source:
-      partition: cpiom_a
-      port: ecs_to_iom
+      partition: bleed_air
+      port: bleed_to_iom
     destination:
-      - partition: sim_gateway
-        port: ecs_to_iom
+      - partition: cpm_a_gateway
+        port: bleed_to_iom
+
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: temperature_reg
+      port: temp_reg_to_iom
+    destination:
+      - partition: cpm_a_gateway
+        port: temp_reg_to_iom

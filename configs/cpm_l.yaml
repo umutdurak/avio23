@@ -1,34 +1,79 @@
-# Avio23 - Landing Gear Domain (CPIOM-L) Hypervisor Configuration
-# Hosts: Extension/Retraction, Braking, Steering applications
-# DAL B - Loss of landing gear function is hazardous
+# Avio23 - Landing Gear Domain (CPM-L) Hypervisor Configuration
+# Hosts: local Network I/O Gateway and three Landing Gear applications
 
 major_frame: 40ms
 
 partitions:
   - id: 0
-    name: cpiom_l
-    duration: 5ms
+    name: cpm_l_gateway
+    duration: 3ms
     offset: 0ms
     period: 40ms
-    image: cpiom_l
+    image: cpm_l_gateway
+    sockets:
+      - type: udp
+        address: 0.0.0.0:49001
+
+  - id: 1
+    name: extension_retraction
+    duration: 2ms
+    offset: 4ms
+    period: 40ms
+    image: extension_retraction
+
+  - id: 2
+    name: braking
+    duration: 2ms
+    offset: 8ms
+    period: 40ms
+    image: braking
+
+  - id: 3
+    name: steering
+    duration: 2ms
+    offset: 12ms
+    period: 40ms
+    image: steering
 
 channel:
-  # IOM -> Landing Gear: sensor data (airspeed, lever, pedals)
+  # Gateway -> Applications: sensor data
   - !Sampling
     msg_size: 1KB
     source:
-      partition: sim_gateway
+      partition: cpm_l_gateway
       port: iom_to_lg
     destination:
-      - partition: cpiom_l
+      - partition: extension_retraction
+        port: iom_to_lg
+      - partition: braking
+        port: iom_to_lg
+      - partition: steering
         port: iom_to_lg
 
-  # Landing Gear -> IOM: command data (gear state, brake pressure, steering)
+  # Applications -> Gateway: status commands
   - !Sampling
     msg_size: 1KB
     source:
-      partition: cpiom_l
-      port: lg_to_iom
+      partition: extension_retraction
+      port: ext_to_iom
     destination:
-      - partition: sim_gateway
-        port: lg_to_iom
+      - partition: cpm_l_gateway
+        port: ext_to_iom
+
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: braking
+      port: brake_to_iom
+    destination:
+      - partition: cpm_l_gateway
+        port: brake_to_iom
+
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: steering
+      port: steer_to_iom
+    destination:
+      - partition: cpm_l_gateway
+        port: steer_to_iom
