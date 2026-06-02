@@ -4,7 +4,7 @@ This document defines the architecture of the Avio23 Integrated Modular Avionics
 
 ## Design Philosophy
 
-Avio23 models a simplified but representative IMA system inspired by modern wide-body aircraft (A350, 787). The goal is to teach:
+Avio23 models a simplified but representative IMA system for a commuter category aeroplane (under CS-23 / Part 23 certification standards). The goal is to teach:
 
 1. **Domain decomposition** -- how aircraft functions are grouped into domains.
 2. **CPM allocation** -- which domains run on which computing modules (Core Processing Modules).
