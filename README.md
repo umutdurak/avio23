@@ -1,118 +1,130 @@
 # Avio23 -- Integrated Modular Avionics Teaching Platform
 
-Avio23 is an educational IMA (Integrated Modular Avionics) system that demonstrates how multiple avionics domains are hosted on ARINC 653 computing modules and interconnected over a simulated AFDX network. It is the companion project to [OSAVI](https://github.com/<your-org>/osavi), which teaches how the ARINC 653 kernel itself is built.
+Avio23 is an educational IMA (Integrated Modular Avionics) system that demonstrates how multiple avionics domains are hosted on ARINC 653 computing modules and interconnected over a simulated AFDX network. It is the companion project to [OSAVI](https://github.com/umutdurak/osavi), which teaches how the ARINC 653 kernel itself is built.
 
-## Architecture
+## Architecture (Option C: Multi-Partition CPM with Network I/O Gateways)
 
 ```
-                    +-----------+
-                    |  IOM      |
-                    | (gateway) |
-                    +-----+-----+
-                          |
-            +-----+-----+-----+-----+
-            |     |           |     |
-       +----+  +--+--+  +----+  +--+--+
-       | L  |  |  F  |  |  A |  |  E  |
-       +----+  +-----+  +----+  +-----+
-      Landing   Fuel      ECS   Electrical
-       Gear
+                    +--------------------+
+                    |  sim_gateway (IOM) |
+                    |     172.20.0.2     |
+                    +----------+---------+
+                               |
+             +-----------------+-----------------+
+             |                 |                 |
+      +------+------+   +------+------+   +------+------+
+      |  CPM-L      |   |  CPM-F      |   |  CPM-A      |
+      |  172.20.0.3 |   |  172.20.0.4 |   |  172.20.0.5 |
+      +------+------+   +------+------+   +------+------+
+             |
+      +------+------+
+      |  CPM-E      |
+      |  172.20.0.6 |
+      +-------------+
 ```
 
-**5 partitions across 5 nodes**, each running an `a653rs-linux` hypervisor instance:
+Under Option C, the system is deployed as **14 partitions across 5 physical nodes (Docker containers)**. Each container runs a local instance of the `a653rs-linux` hypervisor to schedule local partitions and wire them together via memory-mapped sampling ports. Inter-node communication is bridged using UDP sockets over a virtual AFDX network:
 
-| Node | Domain | DAL | Applications |
-|------|--------|-----|-------------|
-| sim_gateway | IOM (sensor bridge) | C | Sensor Broadcast |
-| CPIOM-L | Landing Gear | B | Extension/Retraction, Braking, Steering |
-| CPIOM-F | Fuel | C | Fuel Quantity, Transfer Pump |
-| CPIOM-A | Air Conditioning / ECS | D | Bleed Air, Temperature Regulation |
-| CPIOM-E | Electrical / Energy | B | Generator Control, Load Shedding |
+| Node | Domain | DAL | Partitions (Local Hypervisor) | Description |
+|------|--------|-----|----------------------------|-------------|
+| **sim_gateway** | IOM (sensor bridge) | C | `sim_gateway` | Reads external simulation UDP packets, maps telemetry signals to CPM ports |
+| **cpm_l_node** | Landing Gear | B | `cpm_l_gateway`, `extension_retraction`, `braking`, `steering` | Processes gear lever state, wheel speed/pedal braking, and nose-wheel steering |
+| **cpm_f_node** | Fuel | C | `cpm_f_gateway`, `fuel_quantity`, `transfer_pump` | Computes fuel level totalizer & manages tank balancing |
+| **cpm_a_node** | ECS / Air Cond | D | `cpm_a_gateway`, `bleed_air`, `temperature_reg` | Regulates bleed air supply and cabin temperatures |
+| **cpm_e_node** | Electrical / Energy | B | `cpm_e_gateway`, `generator_control`, `load_shedding` | Monitors generators & manages battery status / load shedding |
 
-All inter-partition communication uses ARINC 653 **sampling ports** with `a653rs-postcard` serialization.
+All inter-partition communication within the same CPM uses ARINC 653 **sampling ports** with `a653rs-postcard` serialization. The Network I/O Gateways (`cpm_*_gateway`) on each CPM handle UDP networking with `sim_gateway` and distribute the data to/from the local application partitions.
+
+---
 
 ## Project Structure
 
 ```
 Avio23/
-  architecture/           SysML v2 architecture model
-  configs/                Per-CPIOM hypervisor YAML configs
-    gateway.yaml          IOM schedule + outbound channels
-    cpm_l.yaml            Landing Gear schedule + channels
-    cpm_f.yaml            Fuel schedule + channels
-    cpm_a.yaml            ECS schedule + channels
-    cpm_e.yaml            Electrical schedule + channels
-  implementation/         Rust workspace
-    ima_config.yaml       Unified 5-partition config (single-host demo)
-    sim_gateway/          IOM partition (generates synthetic flight data)
-    cpm_l/                Landing Gear partition
-    cpm_f/                Fuel partition
-    cpm_a/                ECS partition
-    cpm_e/                Electrical partition
+  architecture/               SysML v2 architecture document
+  configs/                    Per-CPM hypervisor YAML configs
+    gateway.yaml              IOM configuration & scheduled ports
+    cpm_l.yaml                Landing Gear configuration & schedule
+    cpm_f.yaml                Fuel configuration & schedule
+    cpm_a.yaml                ECS configuration & schedule
+    cpm_e.yaml                Electrical configuration & schedule
+  implementation/             Rust workspace
+    sim_gateway/              IOM gateway crate (generates flight telemetry data)
+    cpm_l/                    Landing Gear CPM library and binaries
+      src/lib.rs              Data structure definitions
+      src/bin/                Partition targets (cpm_l_gateway, braking, etc.)
+    cpm_f/                    Fuel CPM library and binaries
+    cpm_a/                    ECS CPM library and binaries
+    cpm_e/                    Electrical CPM library and binaries
   platform/
-    a653rs-linux/         ARINC 653 type-2 hypervisor for Linux (DLR)
-  Dockerfile              Container build
-  docker-compose.yml      Multi-node deployment
+    a653rs-linux/             ARINC 653 type-2 hypervisor for Linux (DLR)
+  Dockerfile                  Multi-stage static musl container build
+  docker-compose.yml          Orchestrates virtual AFDX network & static IPAM
 ```
+
+---
 
 ## Prerequisites
 
-- **Rust** 1.80+ with `x86_64-unknown-linux-musl` target
-- **Docker** and **Docker Compose** (for multi-node deployment)
-- Linux host (the `a653rs-linux` hypervisor uses cgroups and namespaces)
+- **Docker** and **Docker Compose**
+- **Rust** 1.80+ (if working on local crate development)
 
-## Building
+Because `a653rs-linux` hypervisor depends on Linux-specific cgroups, PID/mount namespaces, and procfs, the workspace must be run inside a Linux virtual environment. Using the provided Docker container orchestration is the recommended layout for both macOS and Windows.
 
-### Single-host (all partitions in one hypervisor)
+---
 
-```bash
-cd implementation
-cargo build --release --target x86_64-unknown-linux-musl
+## Building and Running
 
-# Add partition binaries to PATH
-export PATH="$(pwd)/target/x86_64-unknown-linux-musl/release:$PATH"
-
-# Run with the unified config
-cd ../platform/a653rs-linux
-RUST_LOG=info cargo run --package a653rs-linux-hypervisor --release -- \
-    ../../implementation/ima_config.yaml
-```
-
-### Multi-node (Docker Compose)
+To clean, build, and deploy the entire multi-node architecture:
 
 ```bash
-docker compose build
-docker compose up
+# Stop any running containers
+docker compose down
+
+# Compile partitions and build the base image
+docker compose build builder
+
+# Launch all nodes in the background
+docker compose up -d
 ```
 
-Each service runs its own hypervisor with a per-CPIOM config from `configs/`.
+### Inspecting Telemetry
+To monitor the flight telemetry and verify communication flow, view the logs of the simulation gateway:
+
+```bash
+docker compose logs -f sim_gateway
+```
+
+This output displays the flight variables (airspeed ramp, gear switch) along with status reports returned from the CPM-L, CPM-F, CPM-A, and CPM-E partitions.
+
+---
 
 ## Schedule
 
-40 ms major frame:
+The local partition execution is scheduled around a periodic **40 ms major frame**:
 
 ```
-|  0ms        10ms  15ms  20ms  25ms  30ms       40ms  |
-|  sim_gateway | L  |  F  |  A  |  E  |   idle   |
+|  0ms            10ms       20ms       30ms       40ms  |
+|  cpm_x_gateway  |  app_1   |  app_2   |  idle    |
 ```
 
-## Adding a New Domain
+*   **cpm_x_gateway** (3 ms): Synchronizes incoming UDP data with local sampling ports.
+*   **app_1 / app_2** (2 ms each): Process avionics application algorithms.
+*   **idle** (Remaining ms): Margin for growth and worst-case execution time variations.
 
-1. Create a new crate under `implementation/` (copy `cpm_f/` as a template).
-2. Define your data structures and ARINC 653 ports.
-3. Add the partition to `implementation/Cargo.toml` workspace members.
-4. Create a config in `configs/` with the schedule slot and channels.
-5. Add the partition to `ima_config.yaml` and `docker-compose.yml`.
+---
 
 ## Relationship to OSAVI
 
-| | OSAVI | Avio23 |
-|---|---|---|
+| Concern | OSAVI | Avio23 (Option C) |
+|---------|-------|-------------------|
 | **What it teaches** | How to build the ARINC 653 kernel | How to design and deploy IMA applications |
 | **Platform** | Bare-metal Pi Zero 2 W | Linux containers (Docker) |
-| **APEX** | 14 Part 4 services in Rust | a653rs library |
-| **Communication** | Shared-memory ports (single board) | Memory-mapped ports (multi-node) |
+| **APEX** | ARINC 653 Part 1 Services in Rust | a653rs binding library |
+| **Communication** | Shared-memory ports (single board) | Virtual AFDX network bridged via UDP over Ethernet |
 | **Standards** | DO-178C, DO-297 (core software) | DO-297 (platform integration), ARP4754A |
+
+---
 
 ## References
 
