@@ -1,0 +1,114 @@
+# Avio23 - Fuel Domain (CPM-F) Hypervisor Configuration
+# Hosts: local Network I/O Gateway and the fuel applications.
+#
+# ============================================================
+#   ASSIGNMENT — PART 1
+# ============================================================
+# Three things to do in this file:
+#
+#   1. Fill in the TODOs in the `fuel_controller` partition entry
+#      (look for "id: 3" below).
+#
+#   2. Add `fuel_controller` as a destination of the existing
+#      `iom_to_fuel` sampling channel so your partition can read
+#      sensor data.
+#
+#   3. Add a NEW sampling channel that carries actuator commands
+#      from `fuel_controller` back to `cpm_f_gateway`, on port
+#      `controller_to_iom`.
+#
+# Validate with:
+#   cargo run --bin test_bench -- --validate-config
+# ============================================================
+
+major_frame: 40ms
+
+partitions:
+  - id: 0
+    name: cpm_f_gateway
+    duration: 3ms
+    offset: 0ms
+    period: 40ms
+    image: cpm_f_gateway
+    sockets:
+      - type: udp
+        address: 0.0.0.0:49002
+
+  - id: 1
+    name: fuel_quantity
+    duration: 2ms
+    offset: 4ms
+    period: 40ms
+    image: fuel_quantity
+
+  - id: 2
+    name: transfer_pump
+    duration: 2ms
+    offset: 8ms
+    period: 40ms
+    image: transfer_pump
+
+  # ----------------------------------------------------------
+  # TODO (student, Part 1, Step 1.1):
+  # Fill in duration, offset, period.
+  # Constraints:
+  #   - period must equal major_frame (40ms)
+  #   - duration in [1ms, 5ms]
+  #   - the window (offset..offset+duration) must not overlap
+  #     any existing partition window:
+  #         cpm_f_gateway  0..3 ms
+  #         fuel_quantity  4..6 ms
+  #         transfer_pump  8..10 ms
+  # ----------------------------------------------------------
+  - id: 3
+    name: fuel_controller
+    duration: TODO   # e.g. 2ms
+    offset:   TODO   # e.g. 12ms
+    period:   TODO   # must be 40ms
+    image: fuel_controller
+
+
+channel:
+  # Gateway -> Applications: sensor data
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: cpm_f_gateway
+      port: iom_to_fuel
+    destination:
+      - partition: fuel_quantity
+        port: iom_to_fuel
+      - partition: transfer_pump
+        port: iom_to_fuel
+      # --------------------------------------------------------
+      # TODO (student, Part 1, Step 1.2a):
+      # Add fuel_controller as another destination here so it
+      # also receives the iom_to_fuel sensor stream.
+      # --------------------------------------------------------
+
+  # Applications -> Gateway: status / commands
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: fuel_quantity
+      port: fuel_qty_to_iom
+    destination:
+      - partition: cpm_f_gateway
+        port: fuel_qty_to_iom
+
+  - !Sampling
+    msg_size: 1KB
+    source:
+      partition: transfer_pump
+      port: pump_to_iom
+    destination:
+      - partition: cpm_f_gateway
+        port: pump_to_iom
+
+  # ----------------------------------------------------------
+  # TODO (student, Part 1, Step 1.2b):
+  # Add a brand-new sampling channel whose source is
+  # `fuel_controller` (port: controller_to_iom) and whose
+  # destination is `cpm_f_gateway` (port: controller_to_iom).
+  # Copy the shape of the channel above.
+  # ----------------------------------------------------------

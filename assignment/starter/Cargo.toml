@@ -1,0 +1,24 @@
+[package]
+name = "fuel_controller_starter"
+version = "0.1.0"
+edition = "2021"
+description = "Avio23 assignment — Fuel Management System starter kit"
+
+[lib]
+name = "fuel_controller_starter"
+path = "src/lib.rs"
+
+[[bin]]
+name = "test_bench"
+path = "src/bin/test_bench.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+# Pin transitive deps for compatibility with stable Rust 1.84.
+indexmap = "~2.9"
+hashbrown = "~0.15"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
